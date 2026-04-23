@@ -1,5 +1,7 @@
 "use strict";
 
+const cors = require('cors');
+
 const express = require("express");
 const exphbs = require("express-handlebars");
 
@@ -32,3 +34,33 @@ db.sequelize.sync().then(function () {
     console.log("App listening on PORT " + PORT);
   });
 });
+
+// A simple health check endpoint
+app.get('/health', async (req, res) => {
+  try {
+    // Optional: Check DB connection status here via Sequelize
+    await sequelize.authenticate(); 
+    res.status(200).send('Healthy');
+  } catch (error) {
+    res.status(500).send('Unhealthy');
+  }
+});
+
+// CORS Options
+const corsOptions = {
+  // In production, this would be your VM's Public IP or Domain
+  origin: process.env.PUBLIC_ORIGIN || 'http://localhost', 
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+
+
+const pino = require('pino-http')();
+
+// Use structured logging middleware
+app.use(pino);
+
+// A log entry looks like this in the console:
+// {"level":30,"time":1619184000,"msg":"request completed","res":{"statusCode":200},"req":{"method":"GET","url":"/api/books"}}

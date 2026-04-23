@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # 1. The Gatekeeper (Nginx)
+  reverse-proxy:
+    image: nginx:alpine
+    container_name: reverse-proxy
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./logs/nginx:/var/log/nginx
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - frontend_net
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 2. The Application (Node.js)
+  # Note: This handles both frontend (handlebars) and backend (API) roles for this repo
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: epicbook-app
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=database
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+    networks:
+      - frontend_net
+      - backend_net
+    depends_on:
+      database:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - app_logs:/app/logs
+
+  # 3. The Data Store (MySQL)
+  database:
+    image: mysql:8.0
+    container_name: epicbook-db
+    environment:
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASS}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/BuyTheBook_Schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
+      - ./db/author_seed.sql:/docker-entrypoint-initdb.d/2-authors.sql
+      - ./db/books_seed.sql:/docker-entrypoint-initdb.d/3-books.sql
+    networks:
+      - backend_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${DB_USER}", "-p${DB_PASS}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Port 3306 is NOT published to the host for security
+
+networks:
+  frontend_net:
+    driver: bridge
+  backend_net:
+    driver: bridge
+
+volumes:
+  db_data:
+  app_logs:

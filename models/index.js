@@ -15,9 +15,9 @@ if (config.use_env_variable) {
 } else {
   // Modern DevOps logic: Use process.env variables mapped from your .env file
   sequelize = new Sequelize(
+    process.env[config.database] || config.database,
     process.env[config.username] || config.username,
     process.env[config.password] || config.password,
-    process.env[config.database] || config.database,
     {
       host: process.env[config.host] || config.host,
       dialect: config.dialect || "mysql"

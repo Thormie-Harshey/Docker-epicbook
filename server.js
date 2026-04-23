@@ -39,7 +39,7 @@ db.sequelize.sync().then(function () {
 app.get('/health', async (req, res) => {
   try {
     // Optional: Check DB connection status here via Sequelize
-    await sequelize.authenticate(); 
+    await db.sequelize.authenticate(); 
     res.status(200).send('Healthy');
   } catch (error) {
     res.status(500).send('Unhealthy');

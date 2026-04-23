@@ -33,6 +33,9 @@ db.sequelize.sync().then(function () {
   app.listen(PORT, function () {
     console.log("App listening on PORT " + PORT);
   });
+}).catch(err => {
+  console.error("Database connection failed:", err);
+  process.exit(1);
 });
 
 // A simple health check endpoint
